@@ -1,6 +1,7 @@
 # Android and local build state
 .gradle/
 .kotlin/
+.kotlin/
 **/build/
 local.properties
 .idea/
@@ -13,6 +14,7 @@ local.properties
 /runs/
 /.cache/
 /tmp/
+/dist/
 /.tooling/
 /.venv/
 __pycache__/

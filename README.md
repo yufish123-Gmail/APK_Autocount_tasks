@@ -2,7 +2,7 @@
 
 将 [Mgame-auto-count-tasks](https://github.com/yufish123-Gmail/Mgame-auto-count-tasks) 的任务辅助功能移植为可安装的 Android APK。在用户授权并主动启动后，由手机完成界面识别、操作、计时、返回和奖励核对。
 
-本仓库创建于 2026-11-26，目前已完成移植范围和技术方案整理，后续从 Android 工程和只读原型开始实施。APK 构建、手机端任务执行及完整真机验收均待实现。
+本仓库创建于 2026-11-26。已实现 Android 工程、无障碍控制、中文 OCR、完整任务引擎、独立跳转入口和运行记录，并生成签名 APK。40 项 Python 测试、2 项 Kotlin 测试、Android Lint 和本地 Android 模拟器端到端自检通过，手机端实际结算效果待后续真机验证。详见 [本地自测记录](docs/本地自测记录.md)。
 
 ## 项目目标
 
@@ -11,7 +11,42 @@
 - 为八个日常阶段提供统一入口，为「跳转登录 APP 领奖励」提供独立入口。
 - 支持查看阶段进度、暂停、停止及导出诊断记录。
 
-首版建议使用 Kotlin、Android 无障碍服务、OpenCV Android 和内置中文 OCR。最低支持 Android 11（API 30），优先适配现有 1080×2400 竖屏设备。目标手机系统版本、ABI 和窗口可读性在开发前核对，Android SDK 与依赖版本在工程初始化时验证并固定。
+首版使用 Kotlin 原生控制层与 Chaquopy 内嵌 Python，引擎使用 OpenCV 和 NumPy，中文 OCR 使用 ML Kit 内置模型。完整迁入上游任务规则与 78 张识别模板，来源和变更见 [UPSTREAM.md](docs/UPSTREAM.md)。最低 Android 11（API 30），支持 arm64-v8a 和 x86_64，当前识别范围为 1080×2400 竖屏。
+
+当前 OpenCV 和 NumPy Android 预编译依赖使用 4 KB ELF 对齐，安装包按 4 KB 内存页设备适配。部分新机的 16 KB 内存页需要升级或重新编译 native 依赖。运行前会检查并提示不兼容的页大小。
+
+## 安装和操作
+
+1. 将签名 APK 传到手机，通过系统安装器安装「加次数助手」。
+2. 在助手里点「开启无障碍服务」，阅读用途说明并同意，再到系统设置中开启本应用服务。
+3. 按需要允许通知。通知提供运行状态和停止按钮。
+4. 将手机设置为 1080×2400 竖屏，保持解锁与亮屏，在美团打开「我的 → 领币页 → 加次数」。
+5. 回到助手，选择「只读识别当前页面」检查状态，或选择日常、单项、独立跳转、游戏中心并点「开始 / 按实际进度继续」。
+6. 遇到需处理的页面，按提示操作后再点继续。暂停会结束当前计时，继续时重新核对平台进度。
+
+点击「导出运行记录」可以分享 ZIP 文件。默认关闭诊断全屏截图，需要排查时可主动勾选，导出文件可能包含页面个人信息。实际任务执行会占用屏幕，任务数量和奖励以平台当日状态为准。
+
+## 本地开发和打包
+
+本地构建需要 JDK 17 或更高版本及 Python 3.12 作为测试环境。构建脚本在 Windows 下将仓库临时映射到空闲盘符，以兼容包含中文的原目录，所有文件仍位于本仓库内。
+
+```powershell
+# 配置本机 JDK 路径，首次准备工具与测试依赖
+$env:APK_JAVA_HOME = 'C:\path\to\jdk'
+.\scripts\setup.ps1 -HostPython 'C:\path\to\python.exe'
+
+# 任务规则及适配器本地测试
+.\scripts\test.ps1
+
+# Kotlin 单元测试、Android Lint 与 Debug / Release 打包
+.\scripts\build.ps1
+```
+
+工具、SDK、Python 运行时和缓存分别保存在 `.tooling/`、`.cache/` 等被忽略的目录。Release 使用本地生成的独立签名，材料在 `signing/`，需妥善保存该目录才能继续覆盖升级。首次准备工具时需要下载依赖，并接受 Android SDK 许可。
+
+构建输出为 `android/app/build/outputs/apk/release/app-release.apk` 和 `android/app/build/outputs/apk/debug/app-debug.apk`。构建脚本同时将 Release 安装包复制到 `dist/APK_Autocount_tasks-0.1.0.apk`。APK 和签名材料由 Git 忽略。
+
+本地模拟器自检使用 Android 11（API 30）、x86_64、1080×2400。使用 `scripts/build.ps1 -Instrumentation` 生成测试 APK，再用 `scripts/emulator-test.ps1` 对本地模拟器执行安装与端到端自检。脚本限定 `emulator-*` 目标，并核对 `ro.kernel.qemu=1`。本次使用专用 ADB 端口 15537 和 `emulator-5580`。该测试验证截图、中文 OCR 和引擎，平台实际奖励需另行验收。
 
 ## 移植范围
 
@@ -78,7 +113,9 @@
 - `README.md` 保存目标、范围和实施状态。
 - [Agent.md](Agent.md) 保存后续开发与接手约定。
 - [docs/APK移植技术分析.md](docs/APK移植技术分析.md) 保存迁移研究和官方资料。
-- 后续 Android 工程放在 `android/`，本地计划放在 `.planning/`，电脑端诊断文件放在 `runs/`。
+- `android/` 保存 Android 工程，`android/app/src/main/python/` 保存已迁入的引擎、Android 适配器和模板。
+- `scripts/` 保存环境准备、本地测试、构建与上游只读导入脚本。
+- `tests/` 保存本地任务和适配测试，本地计划在 `.planning/`，电脑端诊断文件在 `runs/`。
 
 首轮迁移参考上游提交 [d352788a8018635857e485f22c4d198f7e942a95](https://github.com/yufish123-Gmail/Mgame-auto-count-tasks/tree/d352788a8018635857e485f22c4d198f7e942a95)。上游 2026-11-26 记录的八个日常阶段结算、140 次和 37 分 02 秒用于理解现有行为。Android 端需独立取得验收证据。
 

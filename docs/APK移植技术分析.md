@@ -2,6 +2,8 @@
 
 分析日期为 2026-11-26，源码基线为 `d352788`。目标是把任务流程移到已授权的 Android 手机，在用户主动启动后独立运行，安装完成后日常使用无需电脑、USB 调试或 Root。
 
+本文记录初期方案分析。当前首版选择 Kotlin 控制层加 Chaquopy 内嵌 Python，以完整迁入上游任务引擎。构建、自测和 4 KB 内存页兼容范围以 [README](../README.md) 及 [本地自测记录](本地自测记录.md) 为准。
+
 ## 1. 技术结论
 
 建议首版采用 **Kotlin + Android 无障碍服务 + OpenCV Android + 内置中文 OCR**，最低支持 Android 11（API 30），先适配当前使用的 1080×2400 竖屏设备。由无障碍服务观察前台窗口、执行点击和返回、按需截图。识别及任务状态机全部在手机内运行。Android 14 及以上可按需使用指定窗口截图。Android 11 是这条截图方案的最低版本，手势注入本身从 API 24 起可用。[Android AccessibilityService API](https://developer.android.com/reference/android/accessibilityservice/AccessibilityService)
