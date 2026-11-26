@@ -1,0 +1,30 @@
+# Android and local build state
+.gradle/
+.kotlin/
+**/build/
+local.properties
+.idea/
+*.iml
+.cxx/
+.externalNativeBuild/
+
+# Local plans, evidence, caches and environments
+/.planning/
+/runs/
+/.cache/
+/tmp/
+/.tooling/
+/.venv/
+__pycache__/
+*.py[cod]
+*.log
+
+# Credentials, signing and installable outputs
+.env
+.env.*
+/signing/
+*.jks
+*.keystore
+keystore.properties
+*.apk
+*.aab
